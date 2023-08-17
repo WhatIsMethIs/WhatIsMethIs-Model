@@ -2,7 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,macos,python,jupyternotebooks
 
 # designated file
-.for_commit
+for_commit.ipynb
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
