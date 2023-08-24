@@ -1,11 +1,24 @@
+#### imports ####
+# python files
+import PillModel as PillModel # PillModel.py로 분리해 둘거면 import할 것
+import Image_circle as ImageSide_circle
+import Image_ellipse as ImageSide_ellipse
+import Image_cnt as ImageContourCount
+# python packages
 import cv2
 import numpy as np
+import pandas as pd
+import sys
+import shutil
+import configparser
+import datetime
+
 
 #### 텍스트 유무 기준 양/단면 판별 ####
 # Image_circle.py
 # Image_ellipse.py
 # Image_cnt.py
-
+'''위의 세 files는 import함'''
 
 
 #### 알약 이름 매칭 ####
@@ -70,23 +83,10 @@ class ImageProcess():
 
 #### 모델 관련 ####
 # PillModel.py
-# 알약 shape별로 모델이 별도 존재하므로 모델 기능 관련 클래스
-# 모델의 예측 관련 클래스
+'''모델관련 파일은 import함'''
 
 
 #### main 실행부분. config 파일을 참조해서 터미널과 같이 실행됨 ####
-# python files
-import PillModel as PillModel # PillModel.py로 분리해 둘거면 import할 것
-import Image_circle as ImageSide_circle
-import Image_ellipse as ImageSide_ellipse
-import Image_cnt as ImageContourCount
-# python packages (나중에 위로 올려야겠음)
-import sys
-import shutil
-import configparser
-import pandas as pd
-import datetime
-
 class PillMain():
 
     def main(self, argv):

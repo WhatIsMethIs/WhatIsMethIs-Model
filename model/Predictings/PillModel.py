@@ -1,17 +1,21 @@
+#### imports ####
+# python file
 import PyTorchModel as PyTorchModel
-import cv2
-import json
+from Predicting import PillName as PillName
+from Predicting import ImageProcess as ImageProcess
+# python packages
 import torch
-import PillName
-from operator import attrgetter
-import ImageProcess
-import os
 import torchvision
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import torch.optim as optim
+from operator import attrgetter
+import cv2
+import json
+import os
 
 
+# 알약 shape별로 모델이 별도 존재하므로 모델 기능 관련 클래스
 class PillModel():
     def __init__(self, config):
         self.pill_code = []
@@ -156,8 +160,7 @@ class PillModel():
         return testimg
 
 
-
-# choice one image
+# 모델의 예측 후 클래스 (choice one image)
 class ChoiceImage():
     def __init__(self):
         pass
