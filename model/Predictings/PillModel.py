@@ -13,6 +13,17 @@ from operator import attrgetter
 import cv2
 import json
 import os
+# pytorch 설치안내-conda 기준
+'''
+# CUDA 9.0
+conda install pytorch==1.0.1 torchvision==0.2.2 cudatoolkit=9.0 -c pytorch
+
+# CUDA 10.0
+conda install pytorch==1.0.1 torchvision==0.2.2 cudatoolkit=10.0 -c pytorch
+
+# CPU Only
+conda install pytorch-cpu==1.0.1 torchvision-cpu==0.2.2 cpuonly -c pytorch
+ '''
 
 
 # 알약 shape별로 모델이 별도 존재하므로 모델 기능 관련 클래스
