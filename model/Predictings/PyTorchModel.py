@@ -3,6 +3,10 @@ import torch.nn as nn
 import pkbar # pip install pkbar
 import numpy as np
 import random
+import torch.optim as optim
+import torchbearer # pip install torchbearer
+from torchbearer import Trial
+import datetime
 
 
 # seed fix
@@ -63,10 +67,6 @@ class PillModel(nn.Module):
         return x
 
 
-import torch.optim as optim
-import torchbearer
-from torchbearer import Trial
-import datetime
 
 
 class MakeModel():
