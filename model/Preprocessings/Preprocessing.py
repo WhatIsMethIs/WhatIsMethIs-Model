@@ -17,7 +17,6 @@ class ImageCrop():
         save_path : crop image save path
         rotate_path : rotate image save path
         rotation_angle_circle : circle rotation angle
-        rotation_angle_ellipse : ellipse rotation angle
         '''
 
         self.open_path = config['open_path']
@@ -60,7 +59,7 @@ class ImageCrop():
         return crop_img
 
 
-    # circle image rotation - 원 회전
+    # image rotation - 회전
     def rotate_image_circle(self, save_rotate_img, input_image):
         i = 0
         height, width, channel = input_image.shape
@@ -79,28 +78,8 @@ class ImageCrop():
             i = i + self.rotate_angle_circle
 
 
-    # ellipse image rotation - 타원 회전
-    def rotate_image_ellipse(self, save_rotate_img, input_image):
-        i = 0
-        height, width, channel = input_image.shape
-
-        while i < 360:
-            if (i < 30) or (150 < i and i < 210) or (330 < i):
-                f_path = save_rotate_img + '_' + str(i) + '.png'
-                if not os.path.isfile(f_path):
-                    matrix = cv2.getRotationMatrix2D((width/2, height/2), i, 1)
-                    dst = cv2.warpAffine(input_image, matrix, (width, height))
-                    dst = self.CropShape(dst)
-
-                    cv2.imwrite(f_path, dst)
-                else:
-                    print('rotate file exits : ', f_path)
-
-            i = i + self.rotate_angle_ellipse
-
-
     # image crop and rotation process - 전체 과정
-    def ImageProcess(self, shape):
+    def ImageProcess(self):
         or_dirnames = os.listdir(self.open_path) # 원본디렉토리 내 품목디렉토리들
 
         if( int(self.start_dir) == -1 ):
@@ -158,13 +137,10 @@ class ImageCrop():
                     else:
                         print( 'crop image file exits : ', save_image)
 
-                    '''rotation''' # shape에 따라 다른 회전 필요
+                    '''rotation''' 
                     save_rotate_img = rotate_folder_path + '/' + file[0:len(file)-4]
-
-                    if shape == 'circle':
-                        self.rotate_image_circle(save_rotate_img, input_image)
-                    elif shape == 'ellipse':
-                        self.rotate_image_ellipse(save_rotate_img, input_image)
+                    self.rotate_image_circle(save_rotate_img, input_image)
+                    
 
 # Image Filtering
 class ImageFiltering():
@@ -351,16 +327,13 @@ class Separate():
 
 # 메인
 class PreprocessingMain():
-    def __init__(self): # config파일명 default
-        self.config_file = 'preprocessing_config.ini'
+    def __init__(self): # config파일경로 default
+        self.config_file = './Preprocessings/preprocessing_config.ini'
 
     def main(self, argv):
-        # ex) python3 PreProcessing.py circle config.ini
-        if len(argv) == 3: # config파일명 따로 있으면 이거 따름
-            self.config_file = argv[2]
-
-        
-        shape = argv[1]
+        # ex) python3 Preprocessing.py config.ini
+        if len(argv) == 2: # config파일경로 따로 있으면 이거 따름
+            self.config_file = argv[1]
 
         config = configparser.ConfigParser()
         config.read(self.config_file, encoding='UTF-8')
@@ -371,7 +344,7 @@ class PreprocessingMain():
 
 
         """ Image Crop """
-        self.ImgCrop.ImageProcess(shape)
+        self.ImgCrop.ImageProcess()
 
         """ Image Filtering """
         self.ImgFilter.imgFiltering()
@@ -382,7 +355,7 @@ class PreprocessingMain():
         print('#### main 실행 finish ######')
 
 # 해당 파일이 모듈로서 말고 직접 실행될 때
-# ex) python PreprocessingMain.py {circle or ellipse} [config파일명 있어도 되고 없어도됨]
+# ex) python ./Preprocessings/Preprocessing.py [config파일명 있어도 되고 없어도됨]
 if __name__ == '__main__':
     print("Preprocessing.py 실행시작")
     main_class = PreprocessingMain()
