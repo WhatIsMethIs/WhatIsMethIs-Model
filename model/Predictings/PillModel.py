@@ -26,12 +26,12 @@ conda install pytorch-cpu==1.0.1 torchvision-cpu==0.2.2 cpuonly -c pytorch
  '''
 
 
-# 알약 shape별로 모델이 별도 존재하므로 모델 기능 관련 클래스
+# 알약 모델 기능 관련 클래스
 class PillModel():
     def __init__(self, config):
         self.pill_code = []
         self.imageProcess = ImageProcess.ImageProcess()
-        self.workDirectory = "/data/3rd_model/"
+        self.workDirectory = "./Modelings/model/"
         self.top_count = int(config['top_count'])
         self.pill_top = int(config['pill_top'])
         self.ImageDim = int(config['image_dim'])
@@ -39,12 +39,12 @@ class PillModel():
         self.make_folder_path = config['make_folder_path']
         
 
-    # shape
+    # shape별 모델 파일명 지정
     def pill_shape_conf(self, shape):
         self.model_file = self.workDirectory + shape + "_PyTorchModel.pt"
         
         
-    # model loading
+    # 학습해서 저장한 model loading
     def pill_model_loading(self, config):
         self.model = PyTorchModel.PillModel(config)
         optimizer = optim.Adam(self.model.parameters(), lr = self._lr)
@@ -59,7 +59,7 @@ class PillModel():
         self.criterion = torch.nn.CrossEntropyLoss()
 
 
-    # sorting and top5 
+    # 예측 정확도 순 정렬해서 top5 나열. sorting and top5 
     def pill_sorting(self, output, drug_code_list):
         # accuracy sorting
         indices_objects=[]
@@ -83,7 +83,7 @@ class PillModel():
                 if indices_objects[drugcode].index in drug_list:
                     re_sorting.append(indices_objects[drugcode])
             
-            # if training drug code is not in drug code list, includ_count is 0
+            # training drug code가 drug code 리스트에 없다면, includ_count는 0이다
             if len(re_sorting) == 0:
                 includ_count = 0
 
@@ -110,7 +110,7 @@ class PillModel():
         return indices_top, includ_count
 
     
-    # pill prediction
+    # 알약 예측. pill prediction
     def pill_prediction(self, img):
         self.model.eval()
         
@@ -127,7 +127,7 @@ class PillModel():
             return per_output
 
 
-    # class name and accuracy information
+    # 클래스명 및 정확도 정보 .json파일 반환. class name and accuracy information
     def pill_information(self, indices_top):
         pill_list=[]
         for i in range(self.pill_top):
@@ -143,7 +143,7 @@ class PillModel():
         return jsonString
 
 
-    # one image processing
+    # 하나의 알약이미지 처리: 크롭, 필터링한 뒤 경로만들어 새로 저장
     def pill_image_process(self, img_path):
         image_process = self.imageProcess.CropShape(img_path)
         image_process = self.imageProcess.max_con_CLAHE(image_process)
@@ -177,6 +177,7 @@ class ChoiceImage():
         pass
     
     def ChoiceImage(self,shape, image1_result, image2_result, contourcnt1, contourcnt2, image1_path, image2_path, text_option=False):
+        # 두 이미지 모두 같은 면인 경우, countourcnt로 판단
         if (image1_result == 'BOTH' and image2_result == 'BOTH') or (image1_result == 'ONESIDE' and image2_result == 'ONESIDE'):
             if contourcnt1 > contourcnt2:
                 result = image1_result
@@ -185,14 +186,17 @@ class ChoiceImage():
                 result = image2_result
                 image_path = image2_path
 
+        # image2 결과가 단면인 경우, image2 결과, 경로는 image1 경로
         elif image1_result == 'BOTH' and image2_result == 'ONESIDE':
             result = 'ONESIDE'
             image_path = image1_path
 
+        # image1 결과가 단면인 경우, image1 결과, 경로는 image2 경로
         elif image1_result == 'ONESIDE' and image2_result == 'BOTH':
             result = 'ONESIDE'
             image_path = image2_path
 
+        # 텍스트가 있다면, both로 아닌 경우 result로 표기
         if text_option == True:
             shape = shape + '_' + 'BOTH'
         else:
@@ -200,7 +204,7 @@ class ChoiceImage():
 
         return shape, image_path
 
-
+    # 이미지1, 이미지2 중, countourcnt가 큰 이미지 경로를 반환
     def ChoiceImageContour(self, contourcnt1, contourcnt2, image1_path, image2_path):
         if contourcnt1 > contourcnt2:
             image_path = image1_path

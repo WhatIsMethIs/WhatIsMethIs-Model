@@ -2,7 +2,6 @@
 # python files
 import PillModel as PillModel # PillModel.py로 분리해 둘거면 import할 것
 import Image_circle as ImageSide_circle
-import Image_ellipse as ImageSide_ellipse
 import Image_cnt as ImageContourCount
 # python packages
 import cv2
@@ -16,9 +15,8 @@ import datetime
 
 #### 텍스트 유무 기준 양/단면 판별 ####
 # Image_circle.py
-# Image_ellipse.py
 # Image_cnt.py
-'''위의 세 files는 import함'''
+'''위의 두 files는 import함'''
 
 
 #### 알약 이름 매칭 ####
@@ -38,7 +36,7 @@ class ImageProcess():
     def __init__(self):
         pass
 
-
+    # 네 꼭짓점 좌표 찾기
     def ImageArea(self, input_image):
       rgba = cv2.imread(input_image, cv2.IMREAD_UNCHANGED)
       rgba = cv2.medianBlur(rgba, 55)
@@ -54,7 +52,7 @@ class ImageProcess():
 
       return left_point_x, right_point_x, left_point_y, right_point_y
         
-
+    # 꼭짓점 좌표에 맞춰 크롭하기
     def CropShape(self, input_image):
         left_x, right_x, left_y, right_y = self.ImageArea(input_image)
         crop_img = cv2.imread(input_image, cv2.IMREAD_UNCHANGED)
@@ -66,7 +64,7 @@ class ImageProcess():
 
         return crop_img
     
-    
+    # 색 필터링
     def max_con_CLAHE(self, img):
         lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
@@ -114,24 +112,17 @@ class PillMain():
         log_path = '/data/pred_log/'+nowdate+'.log'
         f=open(log_path,'a')
 
-        shape_list = ['circle', 'ellipse', 'triangle', 'diamond', 'pentagon', 'hexagon', 'octagon', 'square', 'etc']
+        shape_list = ['circle', 'etc']
         if ori_shape not in shape_list:
-            print("SHAPE : circle, ellipse, triangle, diamond, pentagon, hexagon, octagon, square, and etc")
+            print("SHAPE : circle, and etc")
             sys.exit()
 
-        # if circle and ellipse shape, judgment both side or one side
+        # if circle shape, judgment both side or one side
         if ori_shape == 'circle':
             imageside = ImageSide_circle.ImageContour()
             proportion = 4.7
             _, image1_result, contourcnt1 = imageside.Process(image1_path, proportion)
             _, image2_result, contourcnt2 = imageside.Process(image2_path, proportion)
-
-        elif ori_shape == 'ellipse':
-            imageside = ImageSide_ellipse.ImageContour()
-            proportion = 5.5
-            _, image1_result, contourcnt1 = imageside.Process(image1_path, proportion)
-            _, image2_result, contourcnt2 = imageside.Process(image2_path, proportion)
-
         else:
             imagecontourcount = ImageContourCount.ImageContour()
             proportion = 4.7
@@ -140,7 +131,7 @@ class PillMain():
 
         # choice one input image
         choiceimage = PillModel.ChoiceImage()
-        if ori_shape in ('circle', 'ellipse'):
+        if ori_shape in ('circle'):
             # if input text count is two, shape is 'BOTH'
             if f_text != 'none' and b_text != 'none':
                 shape, image_path = choiceimage.ChoiceImage(ori_shape, image1_result, image2_result, contourcnt1, contourcnt2, image1_path, image2_path, True)
@@ -155,28 +146,12 @@ class PillMain():
 
         # config file load for each shape
         config = configparser.ConfigParser()
-        shape_path = '/data/config_shape/'
+        shape_path = './Predictings/predicting_configs/'
 
         if shape == 'circle_BOTH':
             config_file = shape_path + 'config_circle_BOTH.ini'
         elif shape == 'circle_ONESIDE':
             config_file = shape_path + 'config_circle_ONESIDE.ini'
-        elif shape == 'ellipse_BOTH':
-            config_file = shape_path + 'config_ellipse_BOTH.ini'
-        elif shape == 'ellipse_ONESIDE':
-            config_file = shape_path + 'config_ellipse_ONESIDE.ini'
-        elif shape == 'triangle':
-            config_file = shape_path + 'config_triangle.ini'
-        elif shape == 'diamond':
-            config_file = shape_path + 'config_diamond.ini'
-        elif shape == 'pentagon':
-            config_file = shape_path + 'config_pentagon.ini'
-        elif shape == 'hexagon':
-            config_file = shape_path + 'config_hexagon.ini'
-        elif shape == 'octagon':
-            config_file = shape_path + 'config_octagon.ini'
-        elif shape == 'square':
-            config_file = shape_path + 'config_square.ini'
         elif shape == 'etc':
             config_file = shape_path + 'config_etc.ini'
         
@@ -197,8 +172,9 @@ class PillMain():
         output = pillModel.pill_prediction(img)
         indices_top, includ_count = pillModel.pill_sorting(output, drug_list)
 
-        # if shape_oneside( or shape_both) model training drug code is not in drug list, try shape_both (or shape_oneside) model
-        if (includ_count == 0) and (ori_shape in ('circle','ellipse')):
+        # if shape_oneside( or shape_both) model training drug code is not in drug list, 
+        # try shape_both (or shape_oneside) model
+        if (includ_count == 0) and (ori_shape in ('circle')):
             if shape == ori_shape+'_ONESIDE':
                 shape = ori_shape+'_BOTH'
                 config_file = shape_path + 'config_' + shape + '.ini'
@@ -226,6 +202,8 @@ class PillMain():
 
 
 if __name__ == '__main__':
+    print("Predicting.py 실행시작")
     main_class = PillMain()
     main_class.main(sys.argv)
+    print('####### Predicting.py 실행 finish #######')
     
