@@ -5,6 +5,9 @@ from torchvision import transforms
 from PIL import Image
 from model.pill_model import PillModel
 import configparser
+import cv2
+import numpy as np
+from preprocessing import ImageProcess
 
 app = Flask(__name__)
 
@@ -28,8 +31,14 @@ model.eval()
 
 
 def transform_image(infile):
-    image = Image.open(infile)
-    print(image)
+    preprocessor = ImageProcess()
+
+    processed_image = preprocessor.CropShape(f"./upload/{infile}")
+    processed_image = preprocessor.max_con_CLAHE(processed_image)
+    processed_image = preprocessor.max_con_CLAHE(processed_image)
+
+    cv2.imwrite(f"./upload/preprocessed_{infile}", processed_image)
+    image = Image.open(f"./upload/preprocessed_{infile}")
 
     image_size = int(config["PT_model_info"]["input_dim"])
     transform = transforms.Compose([transforms.Resize((image_size, image_size)), transforms.ToTensor()])
@@ -41,6 +50,15 @@ def transform_image(infile):
 
 def get_prediction(input_tensor):
     outputs = model.forward(input_tensor)
+
+    outputs_numpy = outputs.detach().numpy()
+    outputs_exp = np.exp(outputs_numpy)
+    sum_outputs_exp = np.sum(outputs_exp)
+    outputs_softmaxed = outputs_exp / sum_outputs_exp
+
+    np.set_printoptions(precision=5, suppress=True)
+    print(outputs_softmaxed)
+
     _, y_hat = outputs.max(1)
     prediction = y_hat.item()
     return prediction
@@ -53,8 +71,9 @@ def render_prediction(prediction_idx):
 @app.route("/medicines/identify", methods=["POST"])
 def identifyMedicines():
     image_file = request.files["file"]
+    image_file.save(f"./upload/{image_file.filename}")
 
-    input_tensor = transform_image(image_file)
+    input_tensor = transform_image(image_file.filename)
     prediction_idx = get_prediction(input_tensor)
     class_id = render_prediction(prediction_idx)
 
