@@ -28,9 +28,13 @@ class ImageProcess:
         crop_img = cv2.imread(input_image, cv2.IMREAD_UNCHANGED)
         crop_img = crop_img[left_y:right_y, left_x:right_x]
 
-        trans_mask = crop_img[:, :, 3] == 0
-        crop_img[trans_mask] = [255, 255, 255, 255]
-        crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGRA2BGR)
+        if crop_img.shape[2] == 4:
+            trans_mask = crop_img[:, :, 3] == 0
+            crop_img[trans_mask] = [255, 255, 255, 255]
+            crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGRA2BGR)
+        elif crop_img.shape[2] == 3:
+            trans_mask = crop_img[:, :, 2] == 0
+            crop_img[trans_mask] = [255, 255, 255]
 
         return crop_img
 
