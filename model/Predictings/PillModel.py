@@ -1,8 +1,8 @@
 #### imports ####
 # python file
-import PyTorchModel as PyTorchModel
-from Predicting import PillName as PillName
-from Predicting import ImageProcess as ImageProcess
+import PyTorchModel
+from PillName import PillName
+from ImageProcess import ImageProcess
 # python packages
 import torch
 import torchvision
@@ -13,50 +13,39 @@ from operator import attrgetter
 import cv2
 import json
 import os
-# pytorch 설치안내-conda 기준
-'''
-# CUDA 9.0
-conda install pytorch==1.0.1 torchvision==0.2.2 cudatoolkit=9.0 -c pytorch
-
-# CUDA 10.0
-conda install pytorch==1.0.1 torchvision==0.2.2 cudatoolkit=10.0 -c pytorch
-
-# CPU Only
-conda install pytorch-cpu==1.0.1 torchvision-cpu==0.2.2 cpuonly -c pytorch
- '''
 
 
-# 알약 모델 기능 관련 클래스
+#### 알약 모델 기능 관련 클래스 ####
 class PillModel():
     def __init__(self, config):
         self.pill_code = []
-        self.imageProcess = ImageProcess.ImageProcess()
+        self.imageProcess = ImageProcess()
         self.workDirectory = "./Modelings/model/"
         self.top_count = int(config['top_count'])
-        self.pill_top = int(config['pill_top'])
+        self.pill_top = int(config['pill_top']) # 데이터 label이 top_count 수 보다 작을 경우를 위해 0부터 시작하는 변수를 만들어 오류 발생 방지
         self.ImageDim = int(config['image_dim'])
         self._lr = float(config['learning_rate'])
         self.make_folder_path = config['make_folder_path']
         
 
-    # shape별 모델 파일명 지정
+    # 모델 파일명 지정
     def pill_shape_conf(self, shape):
-        self.model_file = self.workDirectory + shape + "_PyTorchModel.pt"
+        self.model_file = self.workDirectory + "230828_model_01_PyTorchModel.pt"
         
         
     # 학습해서 저장한 model loading
     def pill_model_loading(self, config):
         self.model = PyTorchModel.PillModel(config)
-        optimizer = optim.Adam(self.model.parameters(), lr = self._lr)
-        
+
+        optimizer = optim.Adam(self.model.parameters(), lr = self._lr) # 옵티마이저는 Adam
         checkpoint = torch.load(self.model_file, map_location='cpu')
+
         self.model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.dataset = checkpoint['label_name']
-        
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.model = self.model.to(self.device)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.CrossEntropyLoss() # 손실함수는 CrossEntropy
 
 
     # 예측 정확도 순 정렬해서 top5 나열. sorting and top5 
@@ -64,7 +53,7 @@ class PillModel():
         # accuracy sorting
         indices_objects=[]
         for i in range(len(self.dataset)):
-            indices_objects.append(PillName.PillName(self.dataset[i], output[0][i]))
+            indices_objects.append(PillName(self.dataset[i], output[0][i]))
             
         indices_objects = sorted(indices_objects, key=attrgetter('accuracy'), reverse=True)
         self.pill_top = len(self.dataset) if len(self.dataset) < self.top_count else self.top_count
@@ -146,8 +135,8 @@ class PillModel():
     # 하나의 알약이미지 처리: 크롭, 필터링한 뒤 경로만들어 새로 저장
     def pill_image_process(self, img_path):
         image_process = self.imageProcess.CropShape(img_path)
-        image_process = self.imageProcess.max_con_CLAHE(image_process)
-        image_process = self.imageProcess.max_con_CLAHE(image_process)
+        #image_process = self.imageProcess.max_con_CLAHE(image_process)
+        #image_process = self.imageProcess.max_con_CLAHE(image_process)
 
         # if img_path is absolute path, use image file, so extraction filename in absolute path
         filename = os.path.basename(img_path)
@@ -169,46 +158,3 @@ class PillModel():
         testimg = DataLoader(testimgset, batch_size=1, shuffle=False)
         
         return testimg
-
-
-# 모델의 예측 후 클래스 (choice one image)
-class ChoiceImage():
-    def __init__(self):
-        pass
-    
-    def ChoiceImage(self,shape, image1_result, image2_result, contourcnt1, contourcnt2, image1_path, image2_path, text_option=False):
-        # 두 이미지 모두 같은 면인 경우, countourcnt로 판단
-        if (image1_result == 'BOTH' and image2_result == 'BOTH') or (image1_result == 'ONESIDE' and image2_result == 'ONESIDE'):
-            if contourcnt1 > contourcnt2:
-                result = image1_result
-                image_path = image1_path
-            else:
-                result = image2_result
-                image_path = image2_path
-
-        # image2 결과가 단면인 경우, image2 결과, 경로는 image1 경로
-        elif image1_result == 'BOTH' and image2_result == 'ONESIDE':
-            result = 'ONESIDE'
-            image_path = image1_path
-
-        # image1 결과가 단면인 경우, image1 결과, 경로는 image2 경로
-        elif image1_result == 'ONESIDE' and image2_result == 'BOTH':
-            result = 'ONESIDE'
-            image_path = image2_path
-
-        # 텍스트가 있다면, both로 아닌 경우 result로 표기
-        if text_option == True:
-            shape = shape + '_' + 'BOTH'
-        else:
-            shape = shape + '_' + result
-
-        return shape, image_path
-
-    # 이미지1, 이미지2 중, countourcnt가 큰 이미지 경로를 반환
-    def ChoiceImageContour(self, contourcnt1, contourcnt2, image1_path, image2_path):
-        if contourcnt1 > contourcnt2:
-            image_path = image1_path
-        else:
-            image_path = image2_path
-
-        return image_path

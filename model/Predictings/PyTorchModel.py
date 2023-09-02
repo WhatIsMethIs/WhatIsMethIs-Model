@@ -19,7 +19,8 @@ torch.manual_seed(SEED)
 
 
 class PillModel(nn.Module):
-    # bulid cnn model
+
+    # 모델 빌드하기
     def __init__(self, config):
         super(PillModel, self).__init__()
 
@@ -43,12 +44,12 @@ class PillModel(nn.Module):
         self.m_Pool3 = nn.MaxPool2d(poolSize, poolSize)
 
         self.m_Linear4 = nn.Linear(40000, 256)
-        self.m_Drop4 = nn.Dropout2d(0.5)
+        self.m_Drop4 = nn.Dropout2d(0.5) # 오버피팅 방지
 
         self.m_Linear5 = nn.Linear(256, self.m_ClassNum)
         self.m_Relu = nn.ReLU()
 
-
+    # foward 연산 진행
     def forward(self, x):
         x = self.m_Relu(self.m_Conv1(x))
         x = self.m_Pool1(x)
@@ -61,15 +62,16 @@ class PillModel(nn.Module):
 
         x = x.view(x.shape[0],-1)
         x = self.m_Relu(self.m_Linear4(x))
-        x = self.m_Drop4(x)
+        x = self.m_Drop4(x) 
 
         x = self.m_Linear5(x)
         return x
 
 
 
-
+# 모델 만들기
 class MakeModel():
+    # 초기화
     def __init__(self,config):
         '''
         learning_rate : learning rate
@@ -83,7 +85,7 @@ class MakeModel():
         self._savePath = config['save_path']
         self._modelName = config['model_name']
 
-
+    # 모델 저장
     def SaveModel(self, _model, optimizer, _trainData, trainLoss):
         nowdate = datetime.datetime.now().strftime('%y%m%d_%H')
         ret = 0
@@ -106,7 +108,7 @@ class MakeModel():
 
         return ret
 
-
+    # 모델 학습
     def Training(self, _device, _model, _trainData, _valData):
         _model.train()
 
@@ -174,7 +176,7 @@ class MakeModel():
         return ret
         
 
-    # test set model test
+    # 모델 테스트
     def Testing(self, _device, _model, _testData):
         _model.eval()
         criterion = torch.nn.CrossEntropyLoss()
