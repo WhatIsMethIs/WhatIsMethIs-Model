@@ -32,9 +32,9 @@ class ImageProcess:
             trans_mask = crop_img[:, :, 3] == 0
             crop_img[trans_mask] = [255, 255, 255, 255]
             crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGRA2BGR)
-        elif crop_img.shape[2] == 3:
-            trans_mask = crop_img[:, :, 2] == 0
-            crop_img[trans_mask] = [255, 255, 255]
+        # elif crop_img.shape[2] == 3:
+        #     trans_mask = crop_img[:, :, 2] == 0
+        #     crop_img[trans_mask] = [255, 255, 255]
 
         return crop_img
 
