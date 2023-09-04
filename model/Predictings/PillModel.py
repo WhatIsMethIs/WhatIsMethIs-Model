@@ -1,4 +1,4 @@
-#### imports ####
+#### 알약 모델 기능 관련 클래스 ####
 # python file
 import PyTorchModel
 from PillName import PillName
@@ -6,34 +6,33 @@ from ImageProcess import ImageProcess
 # python packages
 import torch
 import torchvision
-from torch.utils.data import DataLoader
 from torchvision import transforms
 import torch.optim as optim
+from torch.utils.data import DataLoader
 from operator import attrgetter
+import os
 import cv2
 import json
-import os
 
 
-#### 알약 모델 기능 관련 클래스 ####
 class PillModel():
     def __init__(self, config):
         self.pill_code = []
         self.imageProcess = ImageProcess()
-        self.workDirectory = "./Modelings/model/"
+        self.workDirectory = "./Modelings/model/" # 모델 폴더의 경로
         self.top_count = int(config['top_count'])
         self.pill_top = int(config['pill_top']) # 데이터 label이 top_count 수 보다 작을 경우를 위해 0부터 시작하는 변수를 만들어 오류 발생 방지
         self.ImageDim = int(config['image_dim'])
         self._lr = float(config['learning_rate'])
-        self.make_folder_path = config['make_folder_path']
-        
+        self.make_folder_path = config['make_folder_path'] # 전처리한 사용자입력 이미지 임시저장 폴더 경로
+    
+    ##### 전처리, 모델에 넣어 예측 #######
 
-    # 모델 파일명 지정
-    def pill_shape_conf(self, shape):
-        self.model_file = self.workDirectory + "230828_model_01_PyTorchModel.pt"
+    # 모델 파일 경로 =모델 폴더 경로+모델 파일명
+    def pill_shape_conf(self, fileName):
+        self.model_file = self.workDirectory + fileName
         
-        
-    # 학습해서 저장한 model loading
+    # 저장된 모델 로드
     def pill_model_loading(self, config):
         self.model = PyTorchModel.PillModel(config)
 
@@ -47,60 +46,37 @@ class PillModel():
         self.model = self.model.to(self.device)
         self.criterion = torch.nn.CrossEntropyLoss() # 손실함수는 CrossEntropy
 
+     # 사용자 입력 알약이미지 전처리
+    def pill_image_process(self, img_path):
+     
+        output_path=self.imageProcess.EmptyBG(img_path) # 배경제거하기
+        processed_img = self.imageProcess.CropShape(output_path) # 크롭하기
 
-    # 예측 정확도 순 정렬해서 top5 나열. sorting and top5 
-    def pill_sorting(self, output, drug_code_list):
-        # accuracy sorting
-        indices_objects=[]
-        for i in range(len(self.dataset)):
-            indices_objects.append(PillName(self.dataset[i], output[0][i]))
+        os.remove(output_path) # "emptyBG.png"파일은 삭제        
+        filename = os.path.basename(output_path) # 이미지파일경로(absoloute path)로부터 이미지파일명 추출
+
+        # 임시 폴더 생성: When loading an image in pytorch, it is loaded by folder, so there must be a folder.
+        if not os.path.exists(self.make_folder_path):
+            os.makedirs(self.make_folder_path)
+            os.makedirs(self.make_folder_path+'result')
+
+        # 임시 이미지 저장 (앱실행 전체 종료시 삭제됨)
+        cv2.imwrite(self.make_folder_path+'result/'+filename+'_temp.jpg', processed_img)
+ 
             
-        indices_objects = sorted(indices_objects, key=attrgetter('accuracy'), reverse=True)
-        self.pill_top = len(self.dataset) if len(self.dataset) < self.top_count else self.top_count
+    # 전처리된 이미지 resizing&텐서로 변환
+    def testImage(self, testimgdir):
 
-        # resorting with drug list
-        if drug_code_list != 'none':
-            drug_list = list(set(drug_code_list))
-        else:
-            drug_list = 'none'
-
-        includ_count = 1
-
-        if drug_list != 'none':
-            re_sorting = []
-            for drugcode in range(len(indices_objects)):
-                if indices_objects[drugcode].index in drug_list:
-                    re_sorting.append(indices_objects[drugcode])
-            
-            # training drug code가 drug code 리스트에 없다면, includ_count는 0이다
-            if len(re_sorting) == 0:
-                includ_count = 0
-
-            if len(re_sorting) != 5:
-                re_len = 5 - len(re_sorting)
-                cnt = 0 
-                for drugcode in range(len(indices_objects)):
-                    if indices_objects[drugcode].index not in drug_list:
-                        re_sorting.append(indices_objects[drugcode])
-                        cnt += 1
-                        if cnt == re_len:
-                            break
-        else:
-            re_sorting = indices_objects
-
-        # top5
-        indices_top = []
-        i, count = 0, 0
-        while (count < self.pill_top):
-            indices_top.append(re_sorting[i])
-            count += 1
-            i += 1
+        transDatagen = transforms.Compose([transforms.Resize((self.ImageDim, self.ImageDim)),transforms.ToTensor()])
+        testimgset = torchvision.datasets.ImageFolder(root = testimgdir, transform = transDatagen)
+        testimg = DataLoader(testimgset, batch_size=1, shuffle=False)
         
-        return indices_top, includ_count
+        return testimg
 
-    
-    # 알약 예측. pill prediction
+
+    # 전처리된 이미지 텐서로 알약 레이블 예측
     def pill_prediction(self, img):
+
         self.model.eval()
         
         with torch.no_grad():
@@ -116,45 +92,50 @@ class PillModel():
             return per_output
 
 
-    # 클래스명 및 정확도 정보 .json파일 반환. class name and accuracy information
+
+    ##### 여기부터는 예측 결과 정렬 및 반환 #######
+    
+    # sorting and topN개 반환
+    def pill_sorting(self, output, drug_code_list):
+
+        indices_objects=[]
+
+        # 기존 label 순서(이름 오름차순)로 결과텐서(예측정확도?)랑 튜플매칭
+        for i in range(len(self.dataset)):
+            indices_objects.append(PillName(self.dataset[i], output[0][i]))
+        
+        # 튜플의 리스트를 결과텐서(예측정확도?) 큰 순으로 내림차순 재정렬
+        indices_objects = sorted(indices_objects, key=attrgetter('accuracy'), reverse=True)
+
+        # pill_top= min(품목수, 나열할개수)
+        self.pill_top = len(self.dataset) if len(self.dataset) < self.top_count else self.top_count
+
+        # 결과를 내놓을 최종 topN
+        indices_top = []
+        i, count = 0, 0
+        while (count < self.pill_top):
+            indices_top.append(indices_objects[i])
+            count += 1
+            i += 1
+        
+        return indices_top
+    
+    # 상위 N개 class name and accuracy information를 JSON스트링으로 반환
     def pill_information(self, indices_top):
+
         pill_list=[]
+
         for i in range(self.pill_top):
-            data = {}
+            data = {} # data={'rank':1, 'code': , 'accuracy': }를 1순위부터 주르륵 가지는 리스트
             data['rank'] = i + 1
             data['code'] = indices_top[i].index
             data['accuracy'] = float(indices_top[i].accuracy)
-    
+            # print(f"data{i}: {data}")
+            
             pill_list.append(data)
     
         jsonString = json.dumps(pill_list)
-        
+
         return jsonString
-
-
-    # 하나의 알약이미지 처리: 크롭, 필터링한 뒤 경로만들어 새로 저장
-    def pill_image_process(self, img_path):
-        image_process = self.imageProcess.CropShape(img_path)
-        #image_process = self.imageProcess.max_con_CLAHE(image_process)
-        #image_process = self.imageProcess.max_con_CLAHE(image_process)
-
-        # if img_path is absolute path, use image file, so extraction filename in absolute path
-        filename = os.path.basename(img_path)
-
-        # When loading an image in pytorch, it is loaded by folder, so there must be a folder.
-        if not os.path.exists(self.make_folder_path):
-            os.makedirs(self.make_folder_path)
-            os.makedirs(self.make_folder_path+'result')
-
-        cv2.imwrite(self.make_folder_path+'result/'+filename+'_temp.jpg', image_process)
- 
-            
-    # test image set
-    def testImage(self, testimgdir):
-        transDatagen = transforms.Compose([transforms.Resize((self.ImageDim, self.ImageDim)),
-                                           transforms.ToTensor()])
-        testimgset = torchvision.datasets.ImageFolder(root = testimgdir,
-                                                      transform = transDatagen)
-        testimg = DataLoader(testimgset, batch_size=1, shuffle=False)
-        
-        return testimg
+    
+   

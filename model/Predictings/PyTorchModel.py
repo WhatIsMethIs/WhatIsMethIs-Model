@@ -7,7 +7,17 @@ import torch.optim as optim
 import torchbearer # pip install torchbearer
 from torchbearer import Trial
 import datetime
+# pytorch 설치안내-conda 기준
+'''
+# CUDA 9.0
+conda install pytorch==1.0.1 torchvision==0.2.2 cudatoolkit=9.0 -c pytorch
 
+# CUDA 10.0
+conda install pytorch==1.0.1 torchvision==0.2.2 cudatoolkit=10.0 -c pytorch
+
+# CPU Only
+conda install pytorch-cpu==1.0.1 torchvision-cpu==0.2.2 cpuonly -c pytorch
+'''
 
 # seed fix
 SEED = 3
@@ -44,7 +54,7 @@ class PillModel(nn.Module):
         self.m_Pool3 = nn.MaxPool2d(poolSize, poolSize)
 
         self.m_Linear4 = nn.Linear(40000, 256)
-        self.m_Drop4 = nn.Dropout2d(0.5) # 오버피팅 방지
+        self.m_Drop4 = nn.Dropout(0.5) # 오버피팅 방지
 
         self.m_Linear5 = nn.Linear(256, self.m_ClassNum)
         self.m_Relu = nn.ReLU()
