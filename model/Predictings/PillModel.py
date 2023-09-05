@@ -100,11 +100,14 @@ class PillModel():
 
         indices_objects=[]
 
-        # 기존 label 순서(이름 오름차순)로 결과텐서(예측정확도?)랑 튜플매칭
+        # 이미지 예측 결과텐서 softmax해서 각 품목에 대한 예측확률(%) 표시
+        acc=100*torch.softmax(output[0], dim=0)
+
+        # 기존 label 순서(이름 오름차순)로 예측확률(%)이랑 튜플매칭
         for i in range(len(self.dataset)):
-            indices_objects.append(PillName(self.dataset[i], output[0][i]))
+            indices_objects.append(PillName(self.dataset[i], acc[i]))
         
-        # 튜플의 리스트를 결과텐서(예측정확도?) 큰 순으로 내림차순 재정렬
+        # 튜플의 리스트를 예측확률(%) 큰 순으로 내림차순 재정렬
         indices_objects = sorted(indices_objects, key=attrgetter('accuracy'), reverse=True)
 
         # pill_top= min(품목수, 나열할개수)
